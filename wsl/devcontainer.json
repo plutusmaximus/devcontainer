@@ -1,0 +1,45 @@
+// See this for installing the nvidia container toolkit (for systems that have nvidia gpus)
+// https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+
+{
+    "name": "C++ Dev",
+    "build": {
+	// Location of docker file relative to the project folder
+        "dockerfile": "../../devcontainer/Dockerfile"
+    },
+    "runArgs":
+    [
+        "--device=/dev/dxg",
+        "--volume=/mnt/wslg:/mnt/wslg",
+        "--volume=/usr/lib/wsl:/usr/lib/wsl:ro",
+        "--volume=/tmp/.X11-unix:/tmp/.X11-unix"
+    ],
+    "containerEnv":
+    {
+        "DISPLAY": "${localEnv:DISPLAY}",
+        "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
+        "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
+        "PULSE_SERVER": "${localEnv:PULSE_SERVER}",
+        "SDL_VIDEODRIVER": "wayland",
+        "LD_LIBRARY_PATH": "/usr/lib/wsl/lib:${containerEnv:LD_LIBRARY_PATH}"
+    },
+
+    //"features": {
+    //    "ghcr.io/devcontainers/features/nvidia-cuda:2": {}
+    //},
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-vscode.cpptools",
+                "ms-vscode.cmake-tools",
+                "matepek.vscode-catch2-test-adapter",
+                "mhutchie.git-graph"
+            ]
+        }
+    },
+    "remoteEnv": {
+        "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin"
+    },
+
+    "remoteUser": "vscode"
+}

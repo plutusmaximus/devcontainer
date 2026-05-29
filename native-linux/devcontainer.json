@@ -4,20 +4,13 @@
 {
     "name": "C++ Dev",
     "build": {
-        "dockerfile": "Dockerfile"
+	// Location of the docker file relative to the project directory
+        "dockerfile": "../../devcontainer/Dockerfile"
     },
     "runArgs": [
         "--gpus", "all",
-
         // Exposes integrated GPU (Intel)
         "--device=/dev/dri",
-
-        //"--device=/dev/dri/card1",
-        //"--device=/dev/dri/renderD128",
-        //"--device=/dev/dri/card2",
-        //"--device=/dev/dri/renderD129",
-        // Required to enable vscode user to read the above device nodes
-
         "--group-add=990"
     ],
 
@@ -37,6 +30,6 @@
     "remoteEnv": {
         "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin"
     },
-    
+
     "remoteUser": "vscode"
-}   
+}
