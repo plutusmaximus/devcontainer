@@ -9,9 +9,10 @@ RUN apt-get update \
     gnupg \
     wget \
     lsb-release \
+    && . /etc/os-release \
     && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc \
         | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main" \
+    && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ ${UBUNTU_CODENAME} main" \
         > /etc/apt/sources.list.d/kitware.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends cmake \
@@ -69,15 +70,21 @@ RUN apt-get update \
 # LLVM
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
+    && . /etc/os-release \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/${UBUNTU_CODENAME}/ llvm-toolchain-${UBUNTU_CODENAME}-22 main" \
         > /etc/apt/sources.list.d/llvm.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-    llvm-22 \
-    clang-22 \
-    lldb-22 \
-    lld-22 \
-    clangd-22 \
+        llvm-22 \
+        clang-22 \
+        lldb-22 \
+        lld-22 \
+        clangd-22 \
+    && LLVM_VERSION_CHECK="$(llvm-config-22 --version | cut -d. -f1)" \
+    && if [ "${LLVM_VERSION_CHECK}" != "22" ]; then \
+        echo "ERROR: LLVM 22 is required, but llvm-config-22 reports ${LLVM_VERSION_CHECK}."; \
+        exit 1; \
+    fi \
     && rm -rf /var/lib/apt/lists/*
 
 ARG VULKAN_HEADERS_TAG=vulkan-sdk-1.4.350.0
@@ -89,12 +96,13 @@ RUN git clone --depth 1 --branch ${VULKAN_HEADERS_TAG} \
     && cmake --install /tmp/Vulkan-Headers/build \
     && rm -rf /tmp/Vulkan-Headers
 
-ENV CMAKE_PREFIX_PATH=/opt/vulkan-headers:${CMAKE_PREFIX_PATH}
+ENV CMAKE_PREFIX_PATH=/opt/vulkan-headers
 
 # GLFW dependencies (for Dawn)
 #RUN apt-get install -y --no-install-recommends \
 #    libxinerama-dev
 
+# Adde users/groups for vscode devcontainer and for accessing the display server with the same UID/GID as the host user
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
@@ -103,22 +111,28 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends sudo \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /etc/sudoers.d \
+    && EXISTING_GROUP_BY_GID="$(getent group ${USER_GID} | cut -d: -f1 || true)" \
     && if getent group ${USERNAME} > /dev/null; then \
-        echo "Group ${USERNAME} already exists"; \
-    elif getent group ${USER_GID} > /dev/null; then \
-        echo "Group with GID ${USER_GID} already exists; reusing it"; \
+        USER_GROUP="${USERNAME}"; \
+    elif [ -n "${EXISTING_GROUP_BY_GID}" ]; then \
+        groupmod -n ${USERNAME} "${EXISTING_GROUP_BY_GID}"; \
+        USER_GROUP="${USERNAME}"; \
     else \
         groupadd --gid ${USER_GID} ${USERNAME}; \
+        USER_GROUP="${USERNAME}"; \
     fi \
-    && USER_GROUP="${USERNAME}" \
-    && if ! getent group "${USER_GROUP}" > /dev/null; then \
-        USER_GROUP="$(getent group ${USER_GID} | cut -d: -f1)"; \
-    fi \
+    && EXISTING_USER_BY_UID="$(getent passwd ${USER_UID} | cut -d: -f1 || true)" \
     && if id -u ${USERNAME} > /dev/null 2>&1; then \
         echo "User ${USERNAME} already exists"; \
+    elif [ -n "${EXISTING_USER_BY_UID}" ]; then \
+        usermod -l ${USERNAME} -d /home/${USERNAME} -m -g "${USER_GROUP}" -s /bin/bash "${EXISTING_USER_BY_UID}"; \
     else \
         useradd --uid ${USER_UID} --gid "${USER_GROUP}" -m ${USERNAME} -s /bin/bash; \
     fi \
+    && if [ "$(id -u ${USERNAME})" != "${USER_UID}" ] && ! getent passwd ${USER_UID} > /dev/null; then \
+        usermod --uid ${USER_UID} ${USERNAME}; \
+    fi \
+    && usermod --gid "${USER_GROUP}" -s /bin/bash ${USERNAME} \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 

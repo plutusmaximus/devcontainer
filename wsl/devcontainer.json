@@ -16,6 +16,8 @@
     ],
     "containerEnv":
     {
+        "GALLIUM_DRIVER": "d3d12",
+        "VK_ICD_FILENAMES": "/usr/share/vulkan/icd.d/dzn_icd.json",
         "DISPLAY": "${localEnv:DISPLAY}",
         "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
         "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
