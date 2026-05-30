@@ -1,7 +1,10 @@
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+#FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04@sha256:517da2300c184c9999ec203c2665244bdebd3578d12fcc7065e83667932643d9
+
+FROM ubuntu:26.04
 
 # cmake
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     ca-certificates \
     gnupg \
     wget \
@@ -11,49 +14,71 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main" \
         > /etc/apt/sources.list.d/kitware.list \
     && apt-get update \
-    && apt-get install -y --no-install-recommends cmake
+    && apt-get install -y --no-install-recommends cmake \
+    && rm -rf /var/lib/apt/lists/*
 
 # Build tools and dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     software-properties-common \
     build-essential \
     git \
     pkg-config \
     gdb \
     ninja-build \
-    wayland-protocols
+    wayland-protocols \
+    && rm -rf /var/lib/apt/lists/*
 
-# TEMP - REMOVE ME - used for testing why we can't use the nvidia device in this container.
-RUN apt-get install -y --no-install-recommends \
-    mesa-vulkan-drivers
-
-# GCC 13
-RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+# Mesa/Vulkan runtime tools
+RUN apt-get update \
+    && add-apt-repository -y ppa:kisak/kisak-mesa \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-    g++-13
+    mesa-utils \
+    vulkan-tools \
+    mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/*
 
-# LLVM
-RUN wget -qO /tmp/llvm.sh https://apt.llvm.org/llvm.sh \
-    && chmod +x /tmp/llvm.sh \
-    && /tmp/llvm.sh 22 all \
-    && rm /tmp/llvm.sh
+# GCC 13
+RUN apt-get update \
+    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    g++-13 \
+    && rm -rf /var/lib/apt/lists/*
 
 # SDL dependencies
-RUN apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     make \
     gnome-desktop-testing libasound2-dev libpulse-dev \
     libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev libx11-xcb-dev \
     libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
     libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
     libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev libusb-1.0-0-dev \
-    libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
+    libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Vulkan dependencies
-RUN apt-get install -y --no-install-recommends \
+# Vulkan libs
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
     libvulkan1 \
     libvulkan-dev \
-    vulkan-tools
+    && rm -rf /var/lib/apt/lists/*
+
+# LLVM
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+        | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-22 main" \
+        > /etc/apt/sources.list.d/llvm.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    llvm-22 \
+    clang-22 \
+    lldb-22 \
+    lld-22 \
+    clangd-22 \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG VULKAN_HEADERS_TAG=vulkan-sdk-1.4.350.0
 
@@ -74,10 +99,26 @@ ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-RUN groupadd --gid ${USER_GID} ${USERNAME} \
-    && useradd --uid ${USER_UID} --gid ${USER_GID} -m ${USERNAME} -s /bin/bash \
-    && apt-get update \
+RUN apt-get update \
     && apt-get install -y --no-install-recommends sudo \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /etc/sudoers.d \
+    && if getent group ${USERNAME} > /dev/null; then \
+        echo "Group ${USERNAME} already exists"; \
+    elif getent group ${USER_GID} > /dev/null; then \
+        echo "Group with GID ${USER_GID} already exists; reusing it"; \
+    else \
+        groupadd --gid ${USER_GID} ${USERNAME}; \
+    fi \
+    && USER_GROUP="${USERNAME}" \
+    && if ! getent group "${USER_GROUP}" > /dev/null; then \
+        USER_GROUP="$(getent group ${USER_GID} | cut -d: -f1)"; \
+    fi \
+    && if id -u ${USERNAME} > /dev/null 2>&1; then \
+        echo "User ${USERNAME} already exists"; \
+    else \
+        useradd --uid ${USER_UID} --gid "${USER_GROUP}" -m ${USERNAME} -s /bin/bash; \
+    fi \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > /etc/sudoers.d/${USERNAME} \
     && chmod 0440 /etc/sudoers.d/${USERNAME}
 
