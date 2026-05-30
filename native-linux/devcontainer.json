@@ -5,13 +5,16 @@
     "name": "C++ Dev",
     "build": {
 	// Location of the docker file relative to the project directory
-        "dockerfile": "../../devcontainer/Dockerfile"
+        "dockerfile": "../../devcontainer/Dockerfile",
+        "args": {
+            "USER_UID": "1000",
+            "USER_GID": "1000"
+        }
     },
     "runArgs": [
         "--gpus", "all",
         // Exposes integrated GPU (Intel)
-        "--device=/dev/dri",
-        "--group-add=990"
+        "--device=/dev/dri"
     ],
 
     //"features": {
@@ -31,5 +34,6 @@
         "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin"
     },
 
-    "remoteUser": "vscode"
+    "remoteUser": "vscode",
+    "updateRemoteUserUID": true
 }

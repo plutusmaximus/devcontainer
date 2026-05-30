@@ -26,48 +26,19 @@ RUN apt-get update \
     git \
     pkg-config \
     gdb \
+    gcc \
     ninja-build \
     wayland-protocols \
     && rm -rf /var/lib/apt/lists/*
 
-# Mesa/Vulkan runtime tools
-RUN apt-get update \
-    && add-apt-repository -y ppa:kisak/kisak-mesa \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-    mesa-utils \
-    vulkan-tools \
-    mesa-vulkan-drivers \
-    && rm -rf /var/lib/apt/lists/*
-
 # GCC 13
-RUN apt-get update \
-    && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-    g++-13 \
-    && rm -rf /var/lib/apt/lists/*
+#RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test \
+#    && apt-get update \
+#    && apt-get install -y --no-install-recommends \
+#    g++-13 \
+#    && rm -rf /var/lib/apt/lists/*
 
-# SDL dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    make \
-    gnome-desktop-testing libasound2-dev libpulse-dev \
-    libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev libx11-xcb-dev \
-    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
-    libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
-    libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev libusb-1.0-0-dev \
-    libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Vulkan libs
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    libvulkan1 \
-    libvulkan-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# LLVM
+# LLVM - This nonsense is necessary to ensure we get versin 22.
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg \
     && . /etc/os-release \
@@ -87,6 +58,34 @@ RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
     fi \
     && rm -rf /var/lib/apt/lists/*
 
+# Mesa/Vulkan runtime tools
+RUN add-apt-repository -y ppa:kisak/kisak-mesa \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends \
+    mesa-utils \
+    vulkan-tools \
+    mesa-vulkan-drivers \
+    && rm -rf /var/lib/apt/lists/*
+
+# Vulkan libs
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    libvulkan1 \
+    libvulkan-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# SDL dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    make \
+    gnome-desktop-testing libasound2-dev libpulse-dev \
+    libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev libx11-xcb-dev \
+    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+    libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
+    libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev libusb-1.0-0-dev \
+    libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 ARG VULKAN_HEADERS_TAG=vulkan-sdk-1.4.350.0
 
 RUN git clone --depth 1 --branch ${VULKAN_HEADERS_TAG} \
@@ -98,11 +97,7 @@ RUN git clone --depth 1 --branch ${VULKAN_HEADERS_TAG} \
 
 ENV CMAKE_PREFIX_PATH=/opt/vulkan-headers
 
-# GLFW dependencies (for Dawn)
-#RUN apt-get install -y --no-install-recommends \
-#    libxinerama-dev
-
-# Adde users/groups for vscode devcontainer and for accessing the display server with the same UID/GID as the host user
+# Add users/groups for vscode devcontainer and align UID/GID with host when provided.
 ARG USERNAME=vscode
 ARG USER_UID=1000
 ARG USER_GID=1000

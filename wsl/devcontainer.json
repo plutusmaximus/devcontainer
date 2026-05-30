@@ -5,7 +5,11 @@
     "name": "C++ Dev",
     "build": {
 	// Location of docker file relative to the project folder
-        "dockerfile": "../../devcontainer/Dockerfile"
+        "dockerfile": "../../devcontainer/Dockerfile",
+        "args": {
+            "USER_UID": "1000",
+            "USER_GID": "1000"
+        }
     },
     "runArgs":
     [
@@ -22,7 +26,7 @@
         "WAYLAND_DISPLAY": "${localEnv:WAYLAND_DISPLAY}",
         "XDG_RUNTIME_DIR": "${localEnv:XDG_RUNTIME_DIR}",
         "PULSE_SERVER": "${localEnv:PULSE_SERVER}",
-        "SDL_VIDEODRIVER": "wayland",
+        // "SDL_VIDEODRIVER": "wayland",
         "LD_LIBRARY_PATH": "/usr/lib/wsl/lib:${containerEnv:LD_LIBRARY_PATH}"
     },
 
@@ -43,5 +47,6 @@
         "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin"
     },
 
-    "remoteUser": "vscode"
+    "remoteUser": "vscode",
+    "updateRemoteUserUID": true
 }
