@@ -14,12 +14,27 @@
     "runArgs": [
         "--gpus", "all",
         // Exposes integrated GPU (Intel)
-        "--device=/dev/dri"
+        "--device=/dev/dri",
+        // Add the user to the video group to allow access to the GPU device
+        "--group-add=990"
     ],
+    "containerEnv": {
+        // Tell X11 clients in the container which X server to connect to
+        "DISPLAY": "${localEnv:DISPLAY}",
+        // Tells X11 clients in the container where to find the authentication cookie for the X server
+        "XAUTHORITY": "/tmp/.container.xauth"
+    },
 
-    //"features": {
-    //    "ghcr.io/devcontainers/features/nvidia-cuda:2": {}
-    //},
+    "mounts": [
+        // Unix socket directory for local X11 connections.
+        // Mounting it lets the container physically connect to the host X server socket
+        "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+        // Host’s actual Xauthority file.
+        // Mounting it read-only at /tmp/.container.xauth lets programs inside the
+        // container read the same MIT-MAGIC-COOKIE auth token that your host apps use.
+        // (see XAUTHORITY in containerEnv above).
+        "source=${localEnv:XAUTHORITY},target=/tmp/.container.xauth,type=bind,readonly"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
@@ -29,9 +44,6 @@
                 "mhutchie.git-graph"
             ]
         }
-    },
-    "remoteEnv": {
-        "PATH": "${containerEnv:PATH}:/usr/local/cuda/bin"
     },
 
     "remoteUser": "vscode",
