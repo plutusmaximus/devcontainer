@@ -2,41 +2,22 @@
 
 FROM ubuntu:26.04
 
-# cmake
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    gnupg \
-    wget \
-    lsb-release \
-    && . /etc/os-release \
-    && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc \
-        | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg \
-    && echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ ${UBUNTU_CODENAME} main" \
-        > /etc/apt/sources.list.d/kitware.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cmake \
-    && rm -rf /var/lib/apt/lists/*
-
 # Build tools and dependencies
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     software-properties-common \
     build-essential \
+    cmake \
     git \
     pkg-config \
     gdb \
     gcc \
     ninja-build \
     wayland-protocols \
+    ca-certificates \
+    gnupg \
+    wget \
     && rm -rf /var/lib/apt/lists/*
-
-# GCC 13
-#RUN add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-#    && apt-get update \
-#    && apt-get install -y --no-install-recommends \
-#    g++-13 \
-#    && rm -rf /var/lib/apt/lists/*
 
 # LLVM - This nonsense is necessary to ensure we get versin 22.
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
@@ -51,6 +32,7 @@ RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         lldb-22 \
         lld-22 \
         clangd-22 \
+        libclang-rt-22-dev \
     && LLVM_VERSION_CHECK="$(llvm-config-22 --version | cut -d. -f1)" \
     && if [ "${LLVM_VERSION_CHECK}" != "22" ]; then \
         echo "ERROR: LLVM 22 is required, but llvm-config-22 reports ${LLVM_VERSION_CHECK}."; \
