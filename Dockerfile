@@ -32,6 +32,8 @@ RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
         lldb-22 \
         lld-22 \
         clangd-22 \
+        clang-tidy-22 \
+        clang-format-22 \
         libclang-rt-22-dev \
     && LLVM_VERSION_CHECK="$(llvm-config-22 --version | cut -d. -f1)" \
     && if [ "${LLVM_VERSION_CHECK}" != "22" ]; then \
